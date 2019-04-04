@@ -9,11 +9,23 @@ from sklearn.utils.validation import check_is_fitted
 import lightgbm as lgb
 import warnings
 
-from .utils import check_eval_metric, check_score_func
-from .utils import DEFAULT_BOUNDS
+from .utils import check_eval_metric, check_score_func, check_param_bounds
+from .utils import DEFAULT_LGB_BOUNDS
 
+__all__=['BayesianLGB']
 
 class BayesianLGB(object):
+    """
+    Do bayesian parameter tuning got lightGBM
+
+    public methods:
+    -fit: do bayesian optimization for lightGBm hyper parameter tuning,
+          using input X and y. Return a fitted model with the best parameters
+          obtained from bayesian optimization
+    -predict: predict results for input X
+
+    """
+    _default_bounds = deepcopy(DEFAULT_LGB_BOUNDS)
 
     def __init__(self,
                  lgb_application='regression',
@@ -34,13 +46,27 @@ class BayesianLGB(object):
                   ):
         """
 
-        :param lgb_application:
-        :param lgb_early_stop:
-        :param lgb_metric:
-        :param lgb_num_boost_round:
-        :param lgb_param_bounds:
+        :param lgb_application: string, the "application" parameter in lgb,
+                                can either be 'regression' or 'classification'.
+        :param lgb_early_stop: int, the "early_stopping_rounds" parameter in lgb
+        :param lgb_metric:  string or callable, the "metric" parameter in lgb, can be a string or callable
+        :param lgb_num_boost_round: int, the "num_boost_round" parameter in lgb
+        :param lgb_param_bounds: tuple of dict, the bounds of lgb-hyper-parameters used in
+                                 bayesian optimization.
+                                 The keys are name of hyper-parameters and the values are
+                                 tuples which denotes the searching interval.
+                                 The keys of this parameter must be the subset of the keys
+                                 of DEFAULT_LGB_PARAMS.
+                                 check the default params bounds in utils.DEFAULT_LGB_PARAMS
+
+
         :param lgb_verbose:
-        :param lgb_learning_rate:
+        :param lgb_learning_rate: float, the learning rate used in hyper parameter tuning.
+                                  After parameter tuning, the final model are trained using
+                                  the best parameters and another learning rate:
+                                  min(.1, 5 * lgb_learning_rate).
+                                  This parameter should not be too large in order to
+                                  fine parameter tuning
         :param bayes_init_points:
         :param bayes_n_iter:
         :param bayes_score:
@@ -59,7 +85,9 @@ class BayesianLGB(object):
         self.random_state = random_state
         self.bayes_lr = lgb_learning_rate
         self.model_lr = min(.1, self.bayes_lr * 5)
-        self._hyper_params_bounds = self._check_param_bounds(lgb_param_bounds)
+        self._hyper_params_bounds = check_param_bounds(param_bounds=lgb_param_bounds,
+                                                       default_bounds=self._default_bounds,
+                                                       allow_none=True)
         self.metric = check_eval_metric(self.task, lgb_metric)
         
         self._boosting_params = dict(
@@ -80,29 +108,6 @@ class BayesianLGB(object):
         )
 
 
-    def _check_param_bounds(self, param_bounds, allow_none = True):
-        """
-
-        To do: check the bound of each parameters
-        :param param_bounds:
-        :param allow_none:
-        :return:
-        """
-
-        default_bounds = deepcopy(DEFAULT_BOUNDS)
-        param_bounds = deepcopy(param_bounds)
-
-        if param_bounds is None:
-            if allow_none:
-                return default_bounds
-            else:
-                raise ValueError('param_bounds should not be None.')
-        if not(set(param_bounds.keys()) <= set(default_bounds.keys())):
-            raise KeyError('The parameters should be {0},but {1} are found.'.\
-                           format(set(default_bounds.keys()),
-                                  set(param_bounds.keys()) - set(default_bounds.keys())))
-        else:
-            return param_bounds
 
     def _fit(self, X, y):
 
