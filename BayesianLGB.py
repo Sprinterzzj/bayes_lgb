@@ -164,7 +164,7 @@ class BayesianLGB(object):
 
         print('-' * 130)
         self._best_n_estimators = self._find_best_n_estimators(X, y)
-        _learning_rate = max(.1, self.learning_rate)
+        _learning_rate = min(.1, self.learning_rate)
         if self.task == 'regression':
             self.model = lgb.LGBMRegressor(n_estimators=self._best_n_estimators,
                                            learning_rate=_learning_rate,
@@ -188,7 +188,7 @@ class BayesianLGB(object):
 
         params = deepcopy(self._best_params)
         params.update(self._boosting_params)
-        params['learning_rate'] = max(.1, self.learning_rate)
+        params['learning_rate'] = min(.1, self.learning_rate)
         model = lgb.train(params=params,
                           train_set=lgb_train,
                           valid_sets=[lgb_train, lgb_val],
