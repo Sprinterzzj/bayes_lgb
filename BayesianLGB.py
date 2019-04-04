@@ -19,9 +19,10 @@ class BayesianLGB(object):
                  lgb_application='regression',
                  lgb_early_stop=500,
                  lgb_metric='rmse',
-                 lgb_num_round=10000,
+                 lgb_num_boost_round=10000,
                  lgb_param_bounds=None,
                  lgb_verbose=1000,
+                 lgb_learning_rate = 0.01,
 
                  bayes_init_points=5,
                  bayes_n_iters=5,
@@ -52,28 +53,28 @@ class BayesianLGB(object):
         self.task = lgb_application
         self.early_stopping_rounds = lgb_early_stop
         self.verbose_eval = lgb_verbose
-        self.num_boost_round = lgb_num_round
+        self.num_boost_round = lgb_num_boost_round
         self.n_splits = n_splits
         self.random_state = random_state
+        self.learning_rate = lgb_learning_rate
         self._hyper_params_bounds = self._check_param_bounds(lgb_param_bounds)
 
         self._boosting_params = dict(
-            application = self.task,
-            boosting = 'gbdt',
-            metric = check_eval_metric(self.task, lgb_metric),
-            learning_rate = 0.01,
-            verbosity = -1,
-            data_random_seed = self.random_state           
+            application=self.task,
+            boosting='gbdt',
+            metric=check_eval_metric(self.task, lgb_metric),
+            learning_rate=self.learning_rate,
+            verbosity=-1,
+            data_random_seed=self.random_state
         )
         self._bayes_score = check_score_func(self.task, bayes_score)
         self._bayes_ops_params = dict(
-            init_points = bayes_init_points,
-            n_iter = bayes_n_iters,
+            init_points=bayes_init_points,
+            n_iter=bayes_n_iters,
             acq='ucb',
             xi=0.0,
             alpha=1e-6
         )
-
 
     def _check_param_bounds(self, param_bounds, allow_none = True):
         """
@@ -130,9 +131,9 @@ class BayesianLGB(object):
                 model = lgb.train(params=params,
                                   train_set=d_train,
                                   valid_sets=watchlist,
-                                  early_stopping_rounds = self.early_stopping_rounds,
-                                  verbose_eval = self.verbose_eval,
-                                  num_boost_round = self.num_boost_round)
+                                  early_stopping_rounds=self.early_stopping_rounds,
+                                  verbose_eval=self.verbose_eval,
+                                  num_boost_round=self.num_boost_round)
 
                 score += self._bayes_score(model, X_val, y_val)
 
@@ -160,13 +161,16 @@ class BayesianLGB(object):
 
         print('-' * 130)
         self._best_n_estimators = self._find_best_n_estimators(X, y)
+        learning_rate = max(.1, self.learning_rate * 5)
 
         if self.task == 'regression':
             self.model = lgb.LGBMRegressor(n_estimators=self._best_n_estimators,
+                                           learning_rate=learning_rate,
                                            **self._best_params)
         else:
             self.model = lgb.LGBMClassifier(n_estimator=self._best_n_estimators,
-                                          **self._best_params)
+                                            learning_rate=learning_rate,
+                                             **self._best_params)
 
         self.model.fit(X, y)
         return self.model
@@ -182,15 +186,15 @@ class BayesianLGB(object):
 
         params = deepcopy(self._best_params)
         params.update(self._boosting_params)
-        model = lgb.train(params = params,
+        params['learning_rate'] = max(.1, self.learning_rate * 5)
+        model = lgb.train(params=params,
                           train_set=lgb_train,
                           valid_sets=[lgb_train, lgb_val],
-                          early_stopping_rounds = self.early_stopping_rounds,
-                          verbose_eval = self.verbose_eval,
-                          num_boost_round = self.num_boost_rounds)
+                          early_stopping_rounds=self.early_stopping_rounds,
+                          verbose_eval=self.verbose_eval,
+                          num_boost_round=self.num_boost_round)
 
         return model.best_iteration
-
 
     def predict(self, X, y = None):
 
