@@ -167,13 +167,13 @@ class BayesianLGB(object):
         self._best_n_estimators = self._find_best_n_estimators(X, y)
         if self.task == 'regression': 
             self.model = lgb.LGBMRegressor(n_estimators=self._best_n_estimators,
-                                           objective = self.metric, 
-                                           learning_rate=_learning_rate,
+                                           objective=self.metric, 
+                                           learning_rate=self.model_lr,
                                            **self._best_params)
         else:
             self.model = lgb.LGBMClassifier(n_estimator=self._best_n_estimators,
-                                            objective = self.metric,
-                                            learning_rate=_learning_rate,
+                                            objective=self.metric,
+                                            learning_rate=self.model_lr,
                                             **self._best_params)
 
         self.model.fit(X, y)
