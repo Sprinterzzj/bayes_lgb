@@ -57,15 +57,16 @@ class BayesianLGB(object):
         self.num_boost_round = lgb_num_boost_round
         self.n_splits = n_splits
         self.random_state = random_state
-        self.learning_rate = lgb_learning_rate
+        self.bayes_lr = lgb_learning_rate
+        self.model_lr = min(.1, self.bayes_lr * 5)
         self._hyper_params_bounds = self._check_param_bounds(lgb_param_bounds)
-
-
+        self.metric = check_eval_metric(self.task, lgb_metric)
+        
         self._boosting_params = dict(
             application=self.task,
             boosting='gbdt',
-            metric=check_eval_metric(self.task, lgb_metric),
-            learning_rate=self.learning_rate,
+            metric=self.metric,
+            learning_rate=self.bayes_lr,
             verbosity=-1,
             data_random_seed=self.random_state
         )
@@ -164,13 +165,14 @@ class BayesianLGB(object):
 
         print('-' * 130)
         self._best_n_estimators = self._find_best_n_estimators(X, y)
-        _learning_rate = min(.1, self.learning_rate)
-        if self.task == 'regression':
+        if self.task == 'regression': 
             self.model = lgb.LGBMRegressor(n_estimators=self._best_n_estimators,
+                                           objective = self.metric, 
                                            learning_rate=_learning_rate,
                                            **self._best_params)
         else:
             self.model = lgb.LGBMClassifier(n_estimator=self._best_n_estimators,
+                                            objective = self.metric,
                                             learning_rate=_learning_rate,
                                             **self._best_params)
 
@@ -188,7 +190,7 @@ class BayesianLGB(object):
 
         params = deepcopy(self._best_params)
         params.update(self._boosting_params)
-        params['learning_rate'] = min(.1, self.learning_rate)
+        params['learning_rate'] = min(.1, self.learning_rate * 5)
         model = lgb.train(params=params,
                           train_set=lgb_train,
                           valid_sets=[lgb_train, lgb_val],
@@ -210,6 +212,7 @@ class BayesianLGB(object):
         params = deepcopy(self._best_params)
         params['n_estimators'] = self._best_n_estimators
         return params
+
 
 
 
