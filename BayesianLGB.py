@@ -159,7 +159,7 @@ class BayesianLGB(object):
             if param in self._best_params:
                 self._best_params[param] = int(self._best_params[param])
 
-    def fit(self, X, y):
+    def fit(self, X, y, feature_name = None):
 
         self._fit(X, y)
 
@@ -176,7 +176,7 @@ class BayesianLGB(object):
                                             learning_rate=self.model_lr,
                                             **self._best_params)
 
-        self.model.fit(X, y)
+        self.model.fit(X, y, feature_name=feature_name)
         return self.model
 
     def _find_best_n_estimators(self, X, y):
@@ -190,7 +190,7 @@ class BayesianLGB(object):
 
         params = deepcopy(self._best_params)
         params.update(self._boosting_params)
-        params['learning_rate'] = min(.1, self.learning_rate * 5)
+        params['learning_rate'] = self.model_lr
         model = lgb.train(params=params,
                           train_set=lgb_train,
                           valid_sets=[lgb_train, lgb_val],
@@ -210,8 +210,13 @@ class BayesianLGB(object):
     def best_params(self):
         check_is_fitted(self, ['_best_params', '_best_n_estimators'])
         params = deepcopy(self._best_params)
-        params['n_estimators'] = self._best_n_estimators
+        params['n_estimators']=self._best_n_estimators
+        params['learning_rate']=self.model_lr
         return params
+
+    def plot_importance(self, **kwargs):
+        check_is_fitted(self, ['model'])
+        return lgb.plot_importance(booster=self.model,**kwargs)
 
 
 
