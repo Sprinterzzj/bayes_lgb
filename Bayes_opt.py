@@ -5,6 +5,7 @@ from sklearn.model_selection import StratifiedKFold, KFold
 from sklearn.utils.validation import check_is_fitted
 import warnings
 
+
 class base_opt(object):
 
     def __init__(self, application='regression', init_point=5,

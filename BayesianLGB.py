@@ -158,6 +158,18 @@ class BayesianLGB(base_opt):
         check_is_fitted(self, ['model'])
         return lgb.plot_importance(booster=self.model,**kwargs)
 
+    def _set_boosting_params(self, key, value):
+        self._boosting_params[key] = value
+
+    def set_alpha(self, alpha):
+        if self.metric == 'huber' or self.metric == 'quantile':
+            if alpha <= 0.:
+                raise ValueError('alpha should >0.')
+            else:
+                self._set_boosting_params('alpha', alpha)
+        else:
+            raise KeyError('Only huber and quantile loss have alpha parameter.')
+
 
 
 
