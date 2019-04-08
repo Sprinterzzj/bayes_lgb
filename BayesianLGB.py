@@ -116,7 +116,7 @@ class BayesianLGB(base_opt):
                                             objective=self.metric,
                                             learning_rate=self.model_lr,
                                             **self._best_params)
-        self.model.set_params(self._additional_params)
+        self.model.set_params(**self._additional_params)
         self.model.fit(X, y, feature_name=feature_name)
         return self.model
 
@@ -161,8 +161,7 @@ class BayesianLGB(base_opt):
 
     def _set_boosting_params(self, key, value):
         self._boosting_params[key] = value
-    
-    
+
     def _set_additional_params(self, key, value):
         self._additional_params[key] = value
 
