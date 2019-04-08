@@ -61,8 +61,11 @@ class BayesianLGB(base_opt):
                 if param in params:
                     params[param] = int(params[param])
             params.update(self._boosting_params)
-
-            kFold_splits = self.stratified_kfold(X, y)
+            
+            if self.application == 'classification':
+                kFold_splits = self.stratified_kfold(X, y)
+            else:
+                kFold_splits = self.kfold(X, y)
 
             score = 0.
             for train_index, valid_index in list(kFold_splits):

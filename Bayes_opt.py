@@ -1,7 +1,7 @@
 from bayes_opt import BayesianOptimization
 from copy import deepcopy
 from .utils import _check_score_func
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedKFold, KFold
 from sklearn.utils.validation import check_is_fitted
 import warnings
 
@@ -36,6 +36,10 @@ class base_opt(object):
         return StratifiedKFold(n_splits=self.n_splits,
                                random_state=self.random_state,
                                shuffle=True).split(X, y)
+    def kfold(self, X, y):
+        return KFold(n_splits=self.n_splits,
+                     random_state=self.random_state,
+                     shuffle=True).split(X, y)
 
     def set_bayes_opt(self, target_func, param_bounds):
         self._bayes_opt = BayesianOptimization(target_func,

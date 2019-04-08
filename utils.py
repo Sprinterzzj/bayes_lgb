@@ -58,7 +58,7 @@ def _check_objective_func(application, eval_metric, allow_none = True):
             raise ValueError('eval_metric should not be None.')
 
     if application == 'regression' and\
-       eval_metric in {'rmse', 'mae', 'mse', 'mape', 'huber'}:
+       eval_metric in {'rmse', 'mae', 'mse', 'mape', 'huber', 'quantile'}:
         return eval_metric
     elif application == 'classification' and\
          eval_metric in {'binary', 'binary_error', 'softmax', 'multi_error'}:
