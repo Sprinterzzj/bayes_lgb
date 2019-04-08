@@ -1,7 +1,8 @@
 from sklearn.metrics import get_scorer
 from copy import deepcopy
 
-def check_score_func(application, score):
+
+def _check_score_func(application, score):
 
     if application not in {'regression', 'classification'}:
         raise ValueError('application should be either regression or classification')
@@ -44,7 +45,8 @@ def check_score_func(application, score):
         raise ValueError('score value should either be a callable, string or"\
                          " None. %r was passed" % scoring')
 
-def check_eval_metric(application, eval_metric, allow_none = True):
+
+def _check_objective_func(application, eval_metric, allow_none = True):
 
     if application not in {'regression', 'classification'}:
         raise ValueError('application should be either regression or classification')
@@ -64,10 +66,10 @@ def check_eval_metric(application, eval_metric, allow_none = True):
     else:
         raise ValueError('%r is not a valid eval_metric value.' % eval_metric)
 
-def check_param_bounds(param_bounds, default_bounds, allow_none = True):
 
+def _check_param_bounds(param_bounds,key,allow_none=True):
 
-        default_bounds = deepcopy(default_bounds)
+        default_bounds = deepcopy(_get_default_params(key=key))
         param_bounds = deepcopy(param_bounds)
 
         if param_bounds is None:
@@ -83,18 +85,25 @@ def check_param_bounds(param_bounds, default_bounds, allow_none = True):
             return param_bounds
 
 
+def _get_default_params(key='lgb'):
+    if key == 'lgb':
+        return deepcopy(DEFAULT_LGB_BOUNDS)
+    else:
+        raise KeyError
+
 
 DEFAULT_LGB_BOUNDS = dict(
-    num_leaves = (30, 200),
-    max_depth = (5, 15),
-    max_bin = (20, 80),
-    bagging_fraction = (0.5, 1.0),
-    bagging_freq = (1, 50),
-    feature_fraction = (0.5, 0.8),
-    min_split_gain = (0.0, 1.0),
-    min_child_samples = (25, 125),
-    min_child_weight = (0.0, 1.0),
-    lambda_l2 = (0.0, 5.0)
+    num_leaves=(30, 200),
+    max_depth=(5, 15),
+    max_bin=(20, 80),
+    bagging_fraction=(0.5, 1.0),
+    bagging_freq=(1, 50),
+    feature_fraction=(0.5, 0.8),
+    min_split_gain=(0.0, 1.0),
+    min_child_samples=(25, 125),
+    min_child_weight=(0.0, 1.0),
+    lambda_l2=(0.0, 5.0),
+    lambda_l1=(0.0, 5.0)
 
 )
 

@@ -1,110 +1,52 @@
 """
 A library for lightGBM parameter tuning using Bayesian Optimization
 """
-from bayes_opt import BayesianOptimization
 from copy import deepcopy
-from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.model_selection import train_test_split
 from sklearn.utils.validation import check_is_fitted
 
 import lightgbm as lgb
 import warnings
 
-from .utils import check_eval_metric, check_score_func, check_param_bounds
-from .utils import DEFAULT_LGB_BOUNDS
+from .Bayes_opt import base_opt
+from .utils import _check_objective_func, _check_param_bounds
+
 
 __all__=['BayesianLGB']
 
-class BayesianLGB(object):
-    """
-    Do bayesian parameter tuning got lightGBM
 
-    public methods:
-    -fit: do bayesian optimization for lightGBm hyper parameter tuning,
-          using input X and y. Return a fitted model with the best parameters
-          obtained from bayesian optimization
-    -predict: predict results for input X
-
-    """
-    _default_bounds = deepcopy(DEFAULT_LGB_BOUNDS)
+class BayesianLGB(base_opt):
 
     def __init__(self,
-                 lgb_application='regression',
-                 lgb_early_stop=500,
-                 lgb_metric='rmse',
-                 lgb_num_boost_round=10000,
-                 lgb_param_bounds=None,
-                 lgb_verbose=1000,
-                 lgb_learning_rate=0.01,
-
-                 bayes_init_points=5,
-                 bayes_n_iter=5,
-                 bayes_score='rmse',
-
-                 n_splits = 5,
-                 random_state = 32,
-
+                 early_stopping_rounds=500,
+                 objective='rmse',
+                 num_boost_round=10000,
+                 param_bounds=None,
+                 learning_rate=0.01,
+                 **kwargs
                   ):
-        """
-
-        :param lgb_application: string, the "application" parameter in lgb,
-                                can either be 'regression' or 'classification'.
-        :param lgb_early_stop: int, the "early_stopping_rounds" parameter in lgb
-        :param lgb_metric:  string or callable, the "metric" parameter in lgb, can be a string or callable
-        :param lgb_num_boost_round: int, the "num_boost_round" parameter in lgb
-        :param lgb_param_bounds: tuple of dict, the bounds of lgb-hyper-parameters used in
-                                 bayesian optimization.
-                                 The keys are name of hyper-parameters and the values are
-                                 tuples which denotes the searching interval.
-                                 The keys of this parameter must be the subset of the keys
-                                 of DEFAULT_LGB_PARAMS.
-                                 check the default params bounds in utils.DEFAULT_LGB_PARAMS
-
-
-        :param lgb_verbose:
-        :param lgb_learning_rate: float, the learning rate used in hyper parameter tuning.
-                                  After parameter tuning, the final model are trained using
-                                  the best parameters and another learning rate:
-                                  min(.1, 5 * lgb_learning_rate).
-                                  This parameter should not be too large in order to
-                                  fine parameter tuning
-        :param bayes_init_points:
-        :param bayes_n_iter:
-        :param bayes_score:
-        :param n_splits:
-        :param random_state:
-        """
-
-        if lgb_application not in {'regression', 'classification'}:
-            raise ValueError('\'application\' must be'
-                             'either regression or classification')
-        self.task = lgb_application
-        self.early_stopping_rounds = lgb_early_stop
-        self.verbose_eval = lgb_verbose
-        self.num_boost_round = lgb_num_boost_round
-        self.n_splits = n_splits
-        self.random_state = random_state
-        self.bayes_lr = lgb_learning_rate
+        super().__init__(**kwargs)
+        if self.application not in {'regression', 'classification'}:
+            raise ValueError('application must be either'
+                             'regression or classification'
+                             'found %s' % self.application)
+        self.early_stopping_rounds = early_stopping_rounds
+        self.num_boost_round = num_boost_round
+        self.bayes_lr = learning_rate
         self.model_lr = min(.1, self.bayes_lr * 5)
-        self._hyper_params_bounds = check_param_bounds(param_bounds=lgb_param_bounds,
-                                                       default_bounds=self._default_bounds,
-                                                       allow_none=True)
-        self.metric = check_eval_metric(self.task, lgb_metric)
+        self._hyper_params_bounds = _check_param_bounds(param_bounds=param_bounds,
+                                                        key='lgb',
+                                                        allow_none=True)
+        self.metric = _check_objective_func(self.application,
+                                            objective)
         
         self._boosting_params = dict(
-            application=self.task,
+            application=self.application,
             boosting='gbdt',
             metric=self.metric,
             learning_rate=self.bayes_lr,
             verbosity=-1,
             data_random_seed=self.random_state
-        )
-        self._bayes_score = check_score_func(self.task, bayes_score)
-        self._bayes_ops_params = dict(
-            init_points=bayes_init_points,
-            n_iter=bayes_n_iter,
-            acq='ucb',
-            xi=0.0,
-            alpha=1e-6
         )
 
 
@@ -120,10 +62,7 @@ class BayesianLGB(object):
                     params[param] = int(params[param])
             params.update(self._boosting_params)
 
-            kFold = StratifiedKFold(n_splits=self.n_splits,
-                                    random_state=self.random_state,
-                                    shuffle=True)
-            kFold_splits = kFold.split(X, y)
+            kFold_splits = self.stratified_kfold(X, y)
 
             score = 0.
             for train_index, valid_index in list(kFold_splits):
@@ -141,24 +80,17 @@ class BayesianLGB(object):
                                   train_set=d_train,
                                   valid_sets=watchlist,
                                   early_stopping_rounds=self.early_stopping_rounds,
-                                  verbose_eval=self.verbose_eval,
+                                  verbose_eval=1000,
                                   num_boost_round=self.num_boost_round)
 
-                score += self._bayes_score(model, X_val, y_val)
+                score += self.score_func(model, X_val, y_val)
 
             return score
 
-        self._LGB_BO = BayesianOptimization(_train_lgb,
-                                            self._hyper_params_bounds,
-                                            self.random_state
-                                            )
-        print('-' * 130)
+        self.set_bayes_opt(target_func=_train_lgb,
+                           param_bounds=self._hyper_params_bounds)
 
-        with warnings.catch_warnings():
-            warnings.filterwarnings('ignore')
-            self._LGB_BO.maximize(**self._bayes_ops_params)
-
-        self._best_params = deepcopy(self._LGB_BO.max['params'])
+        self._best_params = deepcopy(self.bayes_optimization())
         for param in ['num_leaves', 'max_depth', 'max_bin',
                       'bagging_freq', 'min_child_samples']:
             if param in self._best_params:
@@ -170,7 +102,7 @@ class BayesianLGB(object):
 
         print('-' * 130)
         self._best_n_estimators = self._find_best_n_estimators(X, y)
-        if self.task == 'regression': 
+        if self.application == 'regression':
             self.model = lgb.LGBMRegressor(n_estimators=self._best_n_estimators,
                                            objective=self.metric, 
                                            learning_rate=self.model_lr,
@@ -200,7 +132,7 @@ class BayesianLGB(object):
                           train_set=lgb_train,
                           valid_sets=[lgb_train, lgb_val],
                           early_stopping_rounds=self.early_stopping_rounds,
-                          verbose_eval=self.verbose_eval,
+                          verbose_eval=1000,
                           num_boost_round=self.num_boost_round)
 
         return model.best_iteration
