@@ -48,6 +48,7 @@ class BayesianLGB(base_opt):
             verbosity=-1,
             data_random_seed=self.random_state
         )
+        self._additional_params = dict()
 
 
 
@@ -115,7 +116,7 @@ class BayesianLGB(base_opt):
                                             objective=self.metric,
                                             learning_rate=self.model_lr,
                                             **self._best_params)
-
+        self.model.set_params(self._additional_params)
         self.model.fit(X, y, feature_name=feature_name)
         return self.model
 
@@ -160,6 +161,10 @@ class BayesianLGB(base_opt):
 
     def _set_boosting_params(self, key, value):
         self._boosting_params[key] = value
+    
+    
+    def _set_additional_params(self, key, value):
+        self._additional_params[key] = value
 
     def set_alpha(self, alpha):
         if self.metric == 'huber' or self.metric == 'quantile':
@@ -167,6 +172,7 @@ class BayesianLGB(base_opt):
                 raise ValueError('alpha should >0.')
             else:
                 self._set_boosting_params('alpha', alpha)
+                self._set_additional_params('alpha', alpha)
         else:
             raise KeyError('Only huber and quantile loss have alpha parameter.')
 
