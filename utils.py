@@ -1,4 +1,5 @@
 from sklearn.metrics import get_scorer
+from copy import deepcopy
 
 def check_score_func(application, score):
 
@@ -63,9 +64,27 @@ def check_eval_metric(application, eval_metric, allow_none = True):
     else:
         raise ValueError('%r is not a valid eval_metric value.' % eval_metric)
 
+def check_param_bounds(param_bounds, default_bounds, allow_none = True):
 
 
-DEFAULT_BOUNDS = dict(
+        default_bounds = deepcopy(default_bounds)
+        param_bounds = deepcopy(param_bounds)
+
+        if param_bounds is None:
+            if allow_none:
+                return default_bounds
+            else:
+                raise ValueError('param_bounds should not be None.')
+        if not(set(param_bounds.keys()) <= set(default_bounds.keys())):
+            raise KeyError('The parameters should be {0},but {1} are found.'.\
+                           format(set(default_bounds.keys()),
+                                  set(param_bounds.keys()) - set(default_bounds.keys())))
+        else:
+            return param_bounds
+
+
+
+DEFAULT_LGB_BOUNDS = dict(
     num_leaves = (30, 200),
     max_depth = (5, 15),
     max_bin = (20, 80),
