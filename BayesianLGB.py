@@ -9,7 +9,7 @@ import lightgbm as lgb
 import warnings
 
 from .Bayes_opt import base_opt
-from .utils import _check_objective_func, _check_param_bounds
+from .utils import _check_eval_metric, _check_param_bounds
 
 
 __all__=['BayesianLGB']
@@ -19,7 +19,8 @@ class BayesianLGB(base_opt):
 
     def __init__(self,
                  early_stopping_rounds=500,
-                 objective='rmse',
+                 metric ='rmse',
+                 objective=None,
                  num_boost_round=10000,
                  param_bounds=None,
                  learning_rate=0.01,
@@ -37,11 +38,14 @@ class BayesianLGB(base_opt):
         self._hyper_params_bounds = _check_param_bounds(param_bounds=param_bounds,
                                                         key='lgb',
                                                         allow_none=True)
-        self.metric = _check_objective_func(self.application,
-                                            objective)
+        self.metric = _check_eval_metric(self.application,
+                                         metric)
+        self.objective =_check_eval_metric(self.application,
+                                          objective)
         
         self._boosting_params = dict(
             application=self.application,
+            metric=self.metric,
             boosting='gbdt',
             learning_rate=self.bayes_lr,
             verbosity=-1,
@@ -80,7 +84,7 @@ class BayesianLGB(base_opt):
                 watchlist = [d_train, d_valid]
 
                 model = lgb.train(params=params,
-                                  fobj=self.metric,
+                                  fobj=self.objective,
                                   train_set=d_train,
                                   valid_sets=watchlist,
                                   early_stopping_rounds=self.early_stopping_rounds,

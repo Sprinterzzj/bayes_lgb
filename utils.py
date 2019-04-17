@@ -46,7 +46,7 @@ def _check_score_func(application, score):
                          " None. %r was passed" % scoring')
 
 
-def _check_objective_func(application, eval_metric, allow_none = True):
+def _check_eval_metric(application, eval_metric, allow_none = True):
 
     if application not in {'regression', 'classification'}:
         raise ValueError('application should be either regression or classification')
