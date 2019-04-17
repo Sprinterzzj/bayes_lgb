@@ -46,11 +46,10 @@ class BayesianLGB(base_opt):
             metric=self.metric,
             learning_rate=self.bayes_lr,
             verbosity=-1,
-            data_random_seed=self.random_state
+            data_random_seed=self.random_state,
+            n_jobs=-1
         )
         self._additional_params = dict()
-
-
 
     def _fit(self, X, y):
 
@@ -62,6 +61,7 @@ class BayesianLGB(base_opt):
                 if param in params:
                     params[param] = int(params[param])
             params.update(self._boosting_params)
+            params.update(self._additional_params)
             
             if self.application == 'classification':
                 kFold_splits = self.stratified_kfold(X, y)
@@ -141,8 +141,7 @@ class BayesianLGB(base_opt):
 
         return model.best_iteration
 
-
-    def predict(self, X, y = None):
+    def predict(self, X, y=None):
 
         check_is_fitted(self, ['model'])
         return self.model.predict(X)
@@ -151,16 +150,16 @@ class BayesianLGB(base_opt):
     def best_params(self):
         check_is_fitted(self, ['_best_params', '_best_n_estimators'])
         params = deepcopy(self._best_params)
-        params['n_estimators']=self._best_n_estimators
-        params['learning_rate']=self.model_lr
+        params['n_estimators'] = self._best_n_estimators
+        params['learning_rate'] = self.model_lr
         return params
 
     def plot_importance(self, **kwargs):
         check_is_fitted(self, ['model'])
         return lgb.plot_importance(booster=self.model,**kwargs)
 
-    def _set_boosting_params(self, key, value):
-        self._boosting_params[key] = value
+    # def _set_boosting_params(self, key, value):
+    #     self._boosting_params[key] = value
 
     def _set_additional_params(self, key, value):
         self._additional_params[key] = value
@@ -170,10 +169,14 @@ class BayesianLGB(base_opt):
             if alpha <= 0.:
                 raise ValueError('alpha should >0.')
             else:
-                self._set_boosting_params('alpha', alpha)
+                # self._set_boosting_params('alpha', alpha)
                 self._set_additional_params('alpha', alpha)
         else:
             raise KeyError('Only huber and quantile loss have alpha parameter.')
+
+    def set_scale_pos_weight(self, scale_pos_weight):
+        pass
+
 
 
 
