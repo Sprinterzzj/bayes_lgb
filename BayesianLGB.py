@@ -43,7 +43,6 @@ class BayesianLGB(base_opt):
         self._boosting_params = dict(
             application=self.application,
             boosting='gbdt',
-            metric=self.metric,
             learning_rate=self.bayes_lr,
             verbosity=-1,
             data_random_seed=self.random_state,
@@ -81,6 +80,7 @@ class BayesianLGB(base_opt):
                 watchlist = [d_train, d_valid]
 
                 model = lgb.train(params=params,
+                                  fobj=self.metric,
                                   train_set=d_train,
                                   valid_sets=watchlist,
                                   early_stopping_rounds=self.early_stopping_rounds,
