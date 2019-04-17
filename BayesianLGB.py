@@ -111,15 +111,16 @@ class BayesianLGB(base_opt):
 
         print('-' * 130)
         self._best_n_estimators = self._find_best_n_estimators(X, y)
+        objective = self.fobj if self.fobj is not None else self.metric
         if self.application == 'regression':
             self.model = lgb.LGBMRegressor(n_estimators=self._best_n_estimators,
-                                           objective=self.fobj,
+                                           objective=objective,
                                            learning_rate=self.model_lr,
                                            random_state=self.random_state,
                                            **self._best_params)
         else:
             self.model = lgb.LGBMClassifier(n_estimator=self._best_n_estimators,
-                                            objective=self.fobj,
+                                            objective=objective,
                                             learning_rate=self.model_lr,
                                             random_state=self.random_state,
                                             **self._best_params)
