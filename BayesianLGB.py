@@ -110,11 +110,13 @@ class BayesianLGB(base_opt):
             self.model = lgb.LGBMRegressor(n_estimators=self._best_n_estimators,
                                            objective=self.metric, 
                                            learning_rate=self.model_lr,
+                                           random_state=self.random_state,
                                            **self._best_params)
         else:
             self.model = lgb.LGBMClassifier(n_estimator=self._best_n_estimators,
                                             objective=self.metric,
                                             learning_rate=self.model_lr,
+                                            random_state=self.random_state,
                                             **self._best_params)
         self.model.set_params(**self._additional_params)
         self.model.fit(X, y, feature_name=feature_name)
