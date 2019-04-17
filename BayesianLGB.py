@@ -20,7 +20,8 @@ class BayesianLGB(base_opt):
     def __init__(self,
                  early_stopping_rounds=500,
                  metric ='rmse',
-                 objective=None,
+                 fobj=None,
+                 feval=None,
                  num_boost_round=10000,
                  param_bounds=None,
                  learning_rate=0.01,
@@ -40,9 +41,6 @@ class BayesianLGB(base_opt):
                                                         allow_none=True)
         self.metric = _check_eval_metric(self.application,
                                          metric)
-        self.objective =_check_eval_metric(self.application,
-                                          objective)
-        
         self._boosting_params = dict(
             application=self.application,
             metric=self.metric,
@@ -53,6 +51,8 @@ class BayesianLGB(base_opt):
             n_jobs=-1
         )
         self._additional_params = dict()
+        self.fobj = fobj
+        self.feval = feval
 
     def _fit(self, X, y):
 
@@ -84,7 +84,8 @@ class BayesianLGB(base_opt):
                 watchlist = [d_train, d_valid]
 
                 model = lgb.train(params=params,
-                                  fobj=self.objective,
+                                  fobj=self.fobj,
+                                  feval=self.feval,
                                   train_set=d_train,
                                   valid_sets=watchlist,
                                   early_stopping_rounds=self.early_stopping_rounds,
@@ -112,13 +113,13 @@ class BayesianLGB(base_opt):
         self._best_n_estimators = self._find_best_n_estimators(X, y)
         if self.application == 'regression':
             self.model = lgb.LGBMRegressor(n_estimators=self._best_n_estimators,
-                                           objective=self.metric, 
+                                           objective=self.fobj,
                                            learning_rate=self.model_lr,
                                            random_state=self.random_state,
                                            **self._best_params)
         else:
             self.model = lgb.LGBMClassifier(n_estimator=self._best_n_estimators,
-                                            objective=self.metric,
+                                            objective=self.fobj,
                                             learning_rate=self.model_lr,
                                             random_state=self.random_state,
                                             **self._best_params)

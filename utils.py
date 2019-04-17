@@ -63,8 +63,6 @@ def _check_eval_metric(application, eval_metric, allow_none = True):
     elif application == 'classification' and\
          eval_metric in {'binary', 'binary_error', 'softmax', 'multi_error'}:
         return eval_metric
-    elif callable(eval_metric):
-        return eval_metric
     else:
         raise ValueError('%r is not a valid eval_metric value.' % eval_metric)
 
