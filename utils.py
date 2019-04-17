@@ -46,25 +46,25 @@ def _check_score_func(application, score):
                          " None. %r was passed" % scoring')
 
 
-def _check_eval_metric(application, eval_metric, allow_none = True):
+def _check_obj_and_metric(application, function, allow_none=True):
 
     if application not in {'regression', 'classification'}:
         raise ValueError('application should be either regression or classification')
 
-    if eval_metric is None:
+    if function is None:
         if allow_none:
             return None
         else:
             raise ValueError('eval_metric should not be None.')
 
     if application == 'regression' and\
-       eval_metric in {'rmse', 'mae', 'mse', 'mape', 'huber', 'quantile'}:
-        return eval_metric
+       function in {'rmse', 'mae', 'mse', 'mape', 'huber', 'quantile'}:
+        return function
     elif application == 'classification' and\
-         eval_metric in {'binary', 'binary_error', 'softmax', 'multi_error'}:
-        return eval_metric
+         function in {'binary', 'binary_error', 'softmax', 'multi_error'}:
+        return function
     else:
-        raise ValueError('%r is not a valid eval_metric value.' % eval_metric)
+        raise ValueError('%r is not a valid eval_metric value.' % function)
 
 
 def _check_param_bounds(param_bounds,key,allow_none=True):
@@ -96,14 +96,14 @@ DEFAULT_LGB_BOUNDS = dict(
     num_leaves=(30, 200),
     max_depth=(5, 15),
     max_bin=(20, 80),
-    bagging_fraction=(0.5, 1.0),
+    subsample=(0.5, 1.0),
     bagging_freq=(1, 50),
-    feature_fraction=(0.5, 0.8),
+    colsample_by_tree=(0.5, 0.8),
     min_split_gain=(0.0, 1.0),
     min_child_samples=(25, 125),
     min_child_weight=(0.0, 1.0),
-    lambda_l2=(0.0, 5.0),
-    lambda_l1=(0.0, 5.0)
+    reg_alpha=(0.0, 5.0),
+    reg_lambda=(0.0, 5.0)
 
 )
 

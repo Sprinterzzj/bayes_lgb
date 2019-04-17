@@ -5,11 +5,11 @@ from copy import deepcopy
 from sklearn.model_selection import train_test_split
 from sklearn.utils.validation import check_is_fitted
 
-import lightgbm as lgb
-import warnings
+from lightgbm import LGBMClassifier, LGBMRegressor
+
 
 from .Bayes_opt import base_opt
-from .utils import _check_eval_metric, _check_param_bounds
+from .utils import _check_obj_and_metric, _check_param_bounds
 
 
 __all__=['BayesianLGB']
@@ -19,9 +19,8 @@ class BayesianLGB(base_opt):
 
     def __init__(self,
                  early_stopping_rounds=500,
-                 metric ='rmse',
-                 fobj=None,
-                 feval=None,
+                 eval_metric='rmse',
+                 objective='rmse',
                  num_boost_round=10000,
                  param_bounds=None,
                  learning_rate=0.01,
@@ -33,26 +32,20 @@ class BayesianLGB(base_opt):
                              'regression or classification'
                              'found %s' % self.application)
         self.early_stopping_rounds = early_stopping_rounds
-        self.num_boost_round = num_boost_round
+        self.n_estimators = num_boost_round
         self.bayes_lr = learning_rate
         self.model_lr = min(.1, self.bayes_lr * 5)
         self._hyper_params_bounds = _check_param_bounds(param_bounds=param_bounds,
                                                         key='lgb',
                                                         allow_none=True)
-        self.metric = _check_eval_metric(self.application,
-                                         metric)
-        self._boosting_params = dict(
-            application=self.application,
-            metric=self.metric,
-            boosting='gbdt',
-            learning_rate=self.bayes_lr,
-            verbosity=-1,
-            data_random_seed=self.random_state,
-            n_jobs=-1
-        )
+        self.eval_metric = _check_obj_and_metric(self.application,
+                                                 eval_metric)
+        self.objective = _check_obj_and_metric(self.application,
+                                               objective)
         self._additional_params = dict()
-        self.fobj = fobj
-        self.feval = feval
+        self._model = LGBMRegressor if self.application == 'regression' else LGBMClassifier
+        self._kFold_splits = lambda X, y: self.stratified_kfold(X, y)\
+            if self.application == 'regression' else self.kfold(X, y)
 
     def _fit(self, X, y):
 
@@ -63,35 +56,29 @@ class BayesianLGB(base_opt):
                           'bagging_freq', 'min_child_samples']:
                 if param in params:
                     params[param] = int(params[param])
-            params.update(self._boosting_params)
-            params.update(self._additional_params)
-            
-            if self.application == 'classification':
-                kFold_splits = self.stratified_kfold(X, y)
-            else:
-                kFold_splits = self.kfold(X, y)
+
 
             score = 0.
-            for train_index, valid_index in list(kFold_splits):
+            for train_index, valid_index in list(self._kFold_splits(X, y)):
+
                 X_train = X[train_index]
                 y_train = y[train_index]
 
                 X_val = X[valid_index]
                 y_val = y[valid_index]
 
-                d_train = lgb.Dataset(X_train, label=y_train)
-                d_valid = lgb.Dataset(X_val, label=y_val)
-                watchlist = [d_train, d_valid]
-
-                model = lgb.train(params=params,
-                                  fobj=self.fobj,
-                                  feval=self.feval,
-                                  train_set=d_train,
-                                  valid_sets=watchlist,
-                                  early_stopping_rounds=self.early_stopping_rounds,
-                                  verbose_eval=1000,
-                                  num_boost_round=self.num_boost_round)
-
+                model = self._model(boosting_type='gbdt',
+                                    learning_rate=self.bayes_lr,
+                                    random_state=self.random_state,
+                                    n_jobs=-1,
+                                    objective=self.objective,
+                                    eval_metric=self.eval_metric,
+                                    eval_set=(X_val, y_val),
+                                    early_stopping_rounds=self.early_stopping_rounds,
+                                    n_estimators=self.n_estimators,
+                                    verbose=1000)
+                model.set_params(**params)
+                model.fit(X_train, y_train)
                 score += self.score_func(model, X_val, y_val)
 
             return score
