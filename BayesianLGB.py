@@ -12,14 +12,13 @@ from sklearn.utils.validation import check_is_fitted
 
 
 from .Bayes_opt import base_opt
-from .utils import _check_obj_and_metric, _check_param_bounds, _sklearn_fn2lgb_fn
+from .utils import _check_objective_and_eval_metric, _check_param_bounds
 
 
 __all__=['BayesianLGB']
 
 
 class BayesianLGB(base_opt):
-
     def __init__(self,
                  early_stopping_rounds=500,
                  eval_metric='rmse',
@@ -41,11 +40,11 @@ class BayesianLGB(base_opt):
         self._hyper_params_bounds = _check_param_bounds(param_bounds=param_bounds,
                                                         key='lgb',
                                                         allow_none=True)
-        self.eval_metric = _check_obj_and_metric(self._application,
+        _check_objective_and_eval_metric(self._application,
                                                  eval_metric)
-        self.objective = _check_obj_and_metric(self._application,
+        _check_objective_and_eval_metric(self._application,
                                                objective)
-        self._additional_params = dict()
+        self.objective, self.eval_metric = objective, eval_metric
 
         if self._application == 'regression':
             self._model = LGBMRegressor
@@ -59,6 +58,7 @@ class BayesianLGB(base_opt):
         elif self._application in {'binary', 'milticlass'}:
             self._kFold_splits = self.stratified_kfold
 
+        self._additional_params = dict()
         if self._application == 'multiclass':
             if num_class is None and not callable(self.objective):
                 raise ValueError('You must set num_class in'

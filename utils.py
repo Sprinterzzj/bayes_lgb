@@ -59,23 +59,29 @@ def _get_scoring_func(application, score):
                          " None. %r was passed" % scoring')
 
 
-def _check_obj_and_metric(application, function, allow_none=True):
-
-    if application not in {'regression', 'classification'}:
-        raise ValueError('application should be either regression or classification')
+def _check_objective_and_eval_metric(application, function, allow_none=True):
 
     if function is None:
         if allow_none:
-            return None
+            return True
         else:
             raise ValueError('eval_metric should not be None.')
 
+    if callable(function):
+        return True
+
     if application == 'regression' and\
        function in {'rmse', 'mae', 'mse', 'mape', 'huber', 'quantile'}:
-        return function
-    elif application == 'classification' and\
-         function in {'binary', 'binary_error', 'softmax', 'multi_error'}:
-        return function
+        return True
+    elif application == 'binary' and\
+         function in {'binary', 'binary_error'}:
+        return True
+    elif application == 'multiclass' and\
+        function in{'softmax', 'multi_error'}:
+        return True
+    elif application == 'rank' and\
+        function in {'lambdarank'}:
+        return True
     else:
         raise ValueError('%r is not a valid eval_metric value.' % function)
 
@@ -99,8 +105,8 @@ def _check_param_bounds(param_bounds,key,allow_none=True):
 
 
 def _get_default_params(key='lgb'):
-    global DEFAULT_LGB_BOUNDS
     if key == 'lgb':
+        global DEFAULT_LGB_BOUNDS
         return deepcopy(DEFAULT_LGB_BOUNDS)
     else:
         raise KeyError
@@ -142,11 +148,11 @@ def _get_application(application):
         raise ValueError('%s is not a valid application.' % application)
 
 
-def _sklearn_fn2lgb_fn(func):
-    def wrapper(preds, train_data):
-        tests = train_data.get_label()
-        return func(tests, preds)
-    return wrapper
+# def _sklearn_fn2lgb_fn(func):
+#     def wrapper(preds, train_data):
+#         tests = train_data.get_label()
+#         return func(tests, preds)
+#     return wrapper
 
 
 
