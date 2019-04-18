@@ -1,6 +1,6 @@
 from bayes_opt import BayesianOptimization
 from copy import deepcopy
-from .utils import _check_score_func
+from .utils import _get_scoring_func, _get_application
 from sklearn.model_selection import StratifiedKFold, KFold
 from sklearn.utils.validation import check_is_fitted
 import warnings
@@ -11,14 +11,14 @@ class base_opt(object):
     def __init__(self, application='regression', init_point=5,
                  n_iter=5, score='rmse',
                  n_splits=5, random_state=32):
-        self.application = application
+
+        self._application = _get_application(application)
         self.init_points = init_point
         self.n_iter = n_iter
-        self.score_func = _check_score_func(application=application,
+        self.score_func = _get_scoring_func(application=application,
                                             score=score)
         self.n_splits = n_splits
         self.random_state = random_state
-
 
     def fit(self, X, y, features_name=None):
         raise NotImplementedError

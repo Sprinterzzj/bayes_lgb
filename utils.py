@@ -2,16 +2,15 @@ from sklearn.metrics import get_scorer
 from copy import deepcopy
 
 
-def _check_score_func(application, score):
-
-    if application not in {'regression', 'classification'}:
-        raise ValueError('application should be either regression or classification')
+def _get_scoring_func(application, score):
 
     if score is None:
         if application == 'regression':
             return get_scorer('neg_mean_squared_error')
+        elif application in {'binary', 'multiclass'}:
+            return get_scorer('neg_log_loss')
         else:
-            return get_scorer('accuracy')
+            raise ValueError
     #From sklearn/metric/scorer.py
     elif callable(score):
         # Heuristic to ensure user has not passed a metric
@@ -32,11 +31,25 @@ def _check_score_func(application, score):
            score in {'neg_mean_absolute_error', 'neg_mean_squared_error',
                      'neg_mean_squared_log_error', 'neg_median_absolute_error'}:
             return get_scorer(score)
-        elif application == 'classification' and\
-             score in {'accuracy', 'balanced_accuray', 'average_precision',
-                      'f1', 'f1_micro', 'f1_macro', 'roc_auc', 'precision',
-                      'recall', 'neg_log_loss', 'roc_auc'}:
-            return get_scorer(score)
+        elif application == 'binary':
+            if score in {'f1','accuracy', 'average_precision',
+                         'f1_macro','roc_auc','neg_log_loss',
+                         'precision','recall'}:
+                print('%s function does not take label imbalance into account.' 
+                      'You may define your own scoring function'% score)
+                return get_scorer(score)
+
+            elif score in {'balanced_accuray', 'f1_micro', 'f1_weighted'}:
+                return get_scorer(score)
+        elif application =='multiclass':
+            if score in {'accuracy', 'average_precision',
+                         'f1_macro','roc_auc','neg_log_loss',}:
+                print('%s function does not take label imbalance into account.' 
+                      'You may define your own scoring function'% score)
+                return get_scorer(score)
+
+            elif score in {'f1_micro', 'f1_weighted'}:
+                return get_scorer(score)
         else:
             raise ValueError('%r is not a valid score value. '
                              'Use sorted(sklearn.metrics.SCORERS.keys()) '
@@ -86,6 +99,7 @@ def _check_param_bounds(param_bounds,key,allow_none=True):
 
 
 def _get_default_params(key='lgb'):
+    global DEFAULT_LGB_BOUNDS
     if key == 'lgb':
         return deepcopy(DEFAULT_LGB_BOUNDS)
     else:
@@ -106,6 +120,34 @@ DEFAULT_LGB_BOUNDS = dict(
     reg_lambda=(0.0, 5.0)
 
 )
+APPLICATIONS = {
+    'reg': {'regression', 'reg'},
+    'binary': {'binary', 'classification:binary'},
+    'multi': {'multi', 'multi-class', 'classification:multi'},
+    'rank': {'rank', 'ranking'}
+}
+
+
+def _get_application(application):
+    global APPLICATIONS
+    if application in APPLICATIONS['reg']:
+        return 'regression'
+    elif application in APPLICATIONS['binary']:
+        return 'binary'
+    elif application in APPLICATIONS['multi']:
+        return 'multiclass'
+    elif application in APPLICATIONS['rank']:
+        return 'rank'
+    else:
+        raise ValueError('%s is not a valid application.' % application)
+
+
+def _sklearn_fn2lgb_fn(func):
+    def wrapper(preds, train_data):
+        tests = train_data.get_label()
+        return func(tests, preds)
+    return wrapper
+
 
 
 
