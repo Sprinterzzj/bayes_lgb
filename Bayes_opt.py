@@ -9,7 +9,7 @@ import warnings
 class base_opt(object):
 
     def __init__(self, application='regression', init_point=5,
-                 n_iter=5, score='rmse',
+                 n_iter=5, score=None,
                  n_splits=5, random_state=32):
 
         self._application = _get_application(application)

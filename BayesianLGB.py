@@ -30,6 +30,7 @@ class BayesianLGB(base_opt):
                  param_bounds=None,
                  learning_rate=0.05,
                  lr_ratio=10,
+                 kfold=None,
                  **kwargs
                   ):
         super().__init__(**kwargs)
@@ -53,10 +54,13 @@ class BayesianLGB(base_opt):
         else:
             self._model = LGBMRanker
 
-        if self._application == 'regression':
-            self._kFold_splits = self.kfold
-        elif self._application in {'binary', 'milticlass'}:
-            self._kFold_splits = self.stratified_kfold
+        if kfold is None:
+            if self._application == 'regression':
+                self._kFold_splits = self.kfold
+            elif self._application in {'binary', 'milticlass'}:
+                self._kFold_splits = self.stratified_kfold
+        else:
+            self._kFold_splits = kfold
 
         self._additional_params = dict()
         if self._application == 'multiclass':
